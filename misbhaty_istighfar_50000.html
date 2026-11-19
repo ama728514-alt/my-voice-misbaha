@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#116b52">
+<title>مسبحتي الذكية - أستغفر الله</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(160deg,#eaf7f1,#f8fbf8);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#183b30;min-height:100vh;display:grid;place-items:center;padding:16px}
+.app{width:min(100%,460px);background:#fff;border-radius:28px;padding:22px;box-shadow:0 18px 55px #174b3018;text-align:center}
+h1{margin:0;color:#116b52;font-size:29px}.sub{color:#71857c;margin:5px 0 14px;font-size:14px}
+.phrase{background:#eff8f2;border:1px solid #dcefe3;border-radius:16px;padding:14px;color:#116b52;font-size:23px;font-weight:750}
+.circle{width:205px;height:205px;border:9px solid #e1f1e9;border-top-color:#15956e;border-radius:50%;margin:17px auto 10px;display:grid;place-content:center}
+.count{font-size:48px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}.small{font-size:13px;color:#7b8d85;margin-top:6px}
+.progress{height:10px;background:#eaf2ed;border-radius:99px;overflow:hidden;margin:13px 0 7px}.bar{height:100%;width:0;background:#15956e;transition:width .2s}
+.stats{display:flex;justify-content:space-between;font-size:13px;color:#64786e}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+button{border:0;border-radius:14px;padding:14px 9px;font-size:15px;font-weight:700;cursor:pointer}
+.primary{background:#116b52;color:white}.secondary{background:#eaf5ef;color:#116b52}.danger{background:#fff0ed;color:#a33d2c}
+.status{margin:14px 0;padding:11px;border-radius:12px;background:#f2f8f4;color:#47705d;font-size:14px;min-height:44px}
+.transcript{background:#fafcfb;border:1px solid #edf2ee;border-radius:14px;padding:12px;text-align:right;min-height:48px;color:#50675d;font-size:14px;word-break:break-word}
+.note{font-size:12px;line-height:1.75;color:#87958e;margin-top:14px}
+</style></head>
+<body><main class="app">
+<h1>مسبحتي الذكية ❤️</h1><div class="sub">ورد الاستغفار</div>
+<div class="phrase">أستغفر الله</div>
+<div class="circle"><div><div class="count" id="count">0</div><div class="small">استغفارة</div></div></div>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="stats"><span id="percent">0%</span><span>الهدف: 50,000</span></div>
+<div class="stats" style="margin-top:7px"><span>المتبقي</span><strong id="remaining">50,000</strong></div>
+<div class="controls">
+<button class="primary" id="start">🎙️ ابدئي الاستغفار</button>
+<button class="secondary" id="stop" disabled>إيقاف الاستماع</button>
+<button class="secondary" id="plus">+ إضافة واحدة</button>
+<button class="secondary" id="minus">− تصحيح العدد</button>
+<button class="danger" id="reset" style="grid-column:1/-1">تصفير الورد</button>
+</div>
+<div class="status" id="status">اضغطي «ابدئي الاستغفار» واسمحي باستخدام الميكروفون.</div>
+<div style="text-align:right;font-size:13px;color:#64786e;margin:12px 0 6px">آخر كلام تم التقاطه</div>
+<div class="transcript" id="heard">لم يتم التقاط صوت بعد.</div>
+<div class="note">يعدّ التطبيق مرات ظهور عبارة «أستغفر الله» في الكلام الذي يتعرف عليه، ولا يعدّ الكلام الآخر. قد يخطئ التعرف الصوتي أو يدمج التكرارات؛ راجعي آخر كلام وصححي العدد بالأزرار عند الحاجة. يعمل التعرف الصوتي على المتصفحات الداعمة، وقد يتطلب الإنترنت وإذن الميكروفون. يُحفظ تقدمك على نفس المتصفح والجهاز.</div>
+</main>
+<script>
+const TARGET=50000, KEY='misbhaty_istighfar_count_v1';
+const $=id=>document.getElementById(id);
+let count=Math.max(0,Math.min(TARGET,Number(localStorage.getItem(KEY)||0)));
+let rec=null,listening=false,sessionFinals=new Set();
+function fmt(n){return n.toLocaleString('en-US')}
+function render(){
+ count=Math.max(0,Math.min(TARGET,count));localStorage.setItem(KEY,String(count));
+ $('count').textContent=fmt(count);
+ $('remaining').textContent=fmt(TARGET-count);
+ const p=count/TARGET*100;
+ $('percent').textContent=p.toFixed(1)+'%';
+ $('bar').style.width=p+'%';
+}
+function normalize(s){
+ return s.toLowerCase().replace(/[إأآٱ]/g,'ا').replace(/[ًٌٍَُِّْـ]/g,'').replace(/[.,،؛:!?؟]/g,' ').replace(/\s+/g,' ').trim();
+}
+function countPhrase(text){
+ const t=normalize(text);
+ // Accept common speech-recognition spellings of "أستغفر الله".
+ const re=/(?:استغفر|استغفرلله|استغفر الله|استغفر بالله)\s*(?:الله)?/g;
+ // Use the exact two-word phrase, with optional space lost by ASR.
+ const matches=t.match(/استغفر\s*الله/g);
+ return matches ? matches.length : 0;
+}
+function stop(){
+ listening=false;
+ if(rec){try{rec.stop()}catch(e){}}
+ $('start').disabled=false;$('stop').disabled=true;
+}
+function beep(){try{const c=new (window.AudioContext||window.webkitAudioContext)();const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.value=.12;o.start();o.stop(c.currentTime+.22)}catch(e){}}
+$('start').onclick=()=>{
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){$('status').textContent='المتصفح لا يدعم التعرف على الصوت. افتحي الملف في Google Chrome على أندرويد.';return}
+ if(listening)return;
+ sessionFinals.clear();
+ rec=new SR();rec.lang='ar-EG';rec.continuous=true;rec.interimResults=false;rec.maxAlternatives=1;
+ rec.onstart=()=>{listening=true;$('start').disabled=true;$('stop').disabled=false;$('status').textContent='أنا بسمعك الآن… قولي «أستغفر الله» بوضوح.'};
+ rec.onresult=e=>{
+  for(let i=e.resultIndex;i<e.results.length;i++){
+   const r=e.results[i];if(!r.isFinal)continue;
+   const text=r[0].transcript.trim();
+   const id=i+':'+text;if(sessionFinals.has(id))continue;sessionFinals.add(id);
+   $('heard').textContent=text||'لم يتم التعرف على الكلام';
+   const n=countPhrase(text);
+   if(n>0){
+    count=Math.min(TARGET,count+n);render();
+    $('status').textContent='تم احتساب '+n+' استغفارة من العبارة التي تم التعرف عليها.';
+    if(count>=TARGET){$('status').textContent='ما شاء الله ❤️ وصلتي إلى 50,000. تقبّل الله منكِ.';beep();stop();}
+   }else{$('status').textContent='لم أتعرف على عبارة «أستغفر الله» في الكلام الأخير، لذلك لم أضف للعدد.'}
+  }
+ };
+ rec.onerror=e=>{$('status').textContent='مشكلة في الميكروفون: '+e.error+'. تأكدي من إذن الميكروفون والإنترنت.';stop()};
+ rec.onend=()=>{if(listening){try{rec.start()}catch(e){stop()}}};
+ try{rec.start()}catch(e){$('status').textContent='تعذّر بدء الميكروفون. حاولي مرة أخرى.'}
+};
+$('stop').onclick=()=>{stop();$('status').textContent='تم إيقاف الاستماع. تقدمك محفوظ.'};
+$('plus').onclick=()=>{count++;render();$('status').textContent='تمت إضافة استغفارة واحدة يدويًا.'};
+$('minus').onclick=()=>{count=Math.max(0,count-1);render();$('status').textContent='تم تصحيح العدد بإنقاص واحدة.'};
+$('reset').onclick=()=>{if(confirm('هل تريدين تصفير ورد الاستغفار بالكامل؟')){stop();count=0;render();$('heard').textContent='لم يتم التقاط صوت بعد.';$('status').textContent='بدأنا وردًا جديدًا. ربنا يتقبل منكِ.'}};
+render();
+</script></body></html>
